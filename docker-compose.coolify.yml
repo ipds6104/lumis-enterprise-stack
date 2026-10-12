@@ -10,7 +10,7 @@ services:
     restart: unless-stopped
     environment:
       - PORT=8080
-      - DATABASE_URL=sqlite:///data/lumis.db
+      - DATABASE_URL=sqlite:///data/lumis.db?mode=rwc
       - STATIC_DIR=/app/ui/dist
       - LUMIS_BRAND_TITLE=BPS Enterprise AI
       - LUMIS_BRAND_THEME_PRIMARY=#0052cc
