@@ -1,0 +1,49 @@
+# ==============================================================================
+# Lumis Enterprise Stack - Coolify 1-Click Compose
+# ==============================================================================
+
+version: "3.8"
+
+services:
+  lumis:
+    image: ghcr.io/ipds6104/lumis:latest
+    restart: unless-stopped
+    environment:
+      - PORT=8080
+      - DATABASE_URL=sqlite:///data/lumis.db
+      - STATIC_DIR=/app/ui/dist
+      - LUMIS_BRAND_TITLE=BPS Enterprise AI
+      - LUMIS_BRAND_THEME_PRIMARY=#0052cc
+      - LUMIS_UPGRADE_CHANNEL=stable
+      - OPENAI_BASE_URL=https://router.dvlpid.my.id/v1
+      - OPENAI_API_KEY=sk-9router-master-key
+      - DEFAULT_MODEL=my9model-free
+      - TRUSTED_USER_HEADER=x-forwarded-user
+      - SAML_METADATA_URL=https://auth.dvlpid.my.id/t/bps/saml/metadata
+      - SAML_SSO_URL=https://auth.dvlpid.my.id/t/bps/saml/sso
+      - OIDC_ISSUER=https://auth.dvlpid.my.id/t/bps
+    volumes:
+      - lumis_data:/data
+    networks:
+      - coolify
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.lumis-chat.rule=Host(`chat.dvlpid.my.id`)"
+      - "traefik.http.routers.lumis-chat.entrypoints=https"
+      - "traefik.http.routers.lumis-chat.tls=true"
+      - "traefik.http.routers.lumis-chat.tls.certresolver=letsencrypt"
+      - "traefik.http.services.lumis-chat.loadbalancer.server.port=8080"
+      - "traefik.http.middlewares.lumis-sse.headers.customresponseheaders.X-Accel-Buffering=no"
+      - "traefik.http.routers.lumis-chat.middlewares=lumis-sse"
+
+volumes:
+  lumis_data:
+
+networks:
+  coolify:
+    external: true

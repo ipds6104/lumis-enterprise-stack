@@ -1,0 +1,58 @@
+# ==============================================================================
+# Lumis Enterprise Container Stack (Production Ready)
+# Domain: chat.dvlpid.my.id | AI Gateway: router.dvlpid.my.id
+# Identity Provider: rIDM SAML 2.0 / OIDC (auth.dvlpid.my.id)
+# ==============================================================================
+
+version: "3.8"
+
+services:
+  lumis:
+    image: ghcr.io/ipds6104/lumis:latest
+    container_name: lumis-chat
+    restart: unless-stopped
+    environment:
+      - PORT=8080
+      - DATABASE_URL=${DATABASE_URL:-sqlite:///data/lumis.db}
+      - STATIC_DIR=/app/ui/dist
+      - LUMIS_BRAND_TITLE=${LUMIS_BRAND_TITLE:-BPS Enterprise AI}
+      - LUMIS_BRAND_THEME_PRIMARY=${LUMIS_BRAND_THEME_PRIMARY:-#0052cc}
+      - LUMIS_UPGRADE_CHANNEL=${LUMIS_UPGRADE_CHANNEL:-stable}
+      # AI Model Gateway (Decolua 9router on Coolify)
+      - OPENAI_BASE_URL=${LUMIS_AI_GATEWAY_URL:-https://router.dvlpid.my.id/v1}
+      - OPENAI_API_KEY=${LUMIS_AI_GATEWAY_KEY:-sk-9router-master-key}
+      - DEFAULT_MODEL=${LUMIS_AI_DEFAULT_MODEL:-my9model-free}
+      # Enterprise IAM Federation (SAML 2.0 & OIDC via rIDM)
+      - TRUSTED_USER_HEADER=${TRUSTED_USER_HEADER:-x-forwarded-user}
+      - SAML_METADATA_URL=${LUMIS_SAML_METADATA_URL:-https://auth.dvlpid.my.id/t/bps/saml/metadata}
+      - SAML_SSO_URL=${LUMIS_SAML_SSO_URL:-https://auth.dvlpid.my.id/t/bps/saml/sso}
+      - OIDC_ISSUER=${LUMIS_OIDC_ISSUER:-https://auth.dvlpid.my.id/t/bps}
+    volumes:
+      - lumis_data:/data
+    networks:
+      - coolify
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    labels:
+      - "traefik.enable=true"
+      # HTTPS Ingress via Coolify Traefik
+      - "traefik.http.routers.lumis-chat.rule=Host(`chat.dvlpid.my.id`)"
+      - "traefik.http.routers.lumis-chat.entrypoints=https"
+      - "traefik.http.routers.lumis-chat.tls=true"
+      - "traefik.http.routers.lumis-chat.tls.certresolver=letsencrypt"
+      - "traefik.http.services.lumis-chat.loadbalancer.server.port=8080"
+      # SSE Token Streaming Optimization (Zero Buffering)
+      - "traefik.http.middlewares.lumis-sse.headers.customresponseheaders.X-Accel-Buffering=no"
+      - "traefik.http.middlewares.lumis-sse.headers.customresponseheaders.Cache-Control=no-cache"
+      - "traefik.http.routers.lumis-chat.middlewares=lumis-sse"
+
+volumes:
+  lumis_data:
+    name: lumis_enterprise_data
+
+networks:
+  coolify:
+    external: true
