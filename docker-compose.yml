@@ -9,6 +9,7 @@ version: "3.8"
 services:
   lumis:
     image: ghcr.io/ipds6104/lumis:latest
+    pull_policy: always
     container_name: lumis-chat
     restart: unless-stopped
     environment:
